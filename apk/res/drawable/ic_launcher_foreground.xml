@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  启动器图标前景（纯矢量）：
+  · 中央准星：四段短线 (#E7FFF9)
+  · 准星中心：青绿圆角方块 (#20E4B9) + 更浅内块
+  · 外围刻度环：粗圆环，右上留缺口，渐变 #7C5CFF -> #4E8DFF -> #23E6BE
+  · 环上/右/下各一条短刻度线
+  内容全部落在自适应图标 66dp 安全区内（半径 ≤ 310 / 512）。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- 刻度环（半径 240，线宽 56，右上缺口 44°） -->
+    <path
+        android:pathData="M723.9,399.3 A240,240 0 1 1 586.2,283.7"
+        android:strokeWidth="56"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="300"
+                android:startY="260"
+                android:endX="740"
+                android:endY="780">
+                <item android:offset="0" android:color="#7C5CFF" />
+                <item android:offset="0.5" android:color="#4E8DFF" />
+                <item android:offset="1" android:color="#23E6BE" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 刻度线：上 / 右 / 下 -->
+    <path
+        android:pathData="M512,202 L512,234"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="16"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M790,512 L822,512"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="16"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M512,790 L512,822"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="16"
+        android:strokeLineCap="round" />
+
+    <!-- 准星四段短线 -->
+    <path
+        android:pathData="M512,372 L512,442"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="18"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M512,582 L512,652"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="18"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M372,512 L442,512"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="18"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M582,512 L652,512"
+        android:strokeColor="#E7FFF9"
+        android:strokeWidth="18"
+        android:strokeLineCap="round" />
+
+    <!-- 中心青绿圆角方块 -->
+    <path
+        android:pathData="M472,457 H552 A15,15 0 0 1 567,472 V552 A15,15 0 0 1 552,567 H472 A15,15 0 0 1 457,552 V472 A15,15 0 0 1 472,457 Z"
+        android:fillColor="#20E4B9" />
+
+    <!-- 内部更浅的小方块 -->
+    <path
+        android:pathData="M492,491 H532 A9,9 0 0 1 541,500 V532 A9,9 0 0 1 532,541 H492 A9,9 0 0 1 483,532 V500 A9,9 0 0 1 492,491 Z"
+        android:fillColor="#B9FFEE"
+        android:fillAlpha="0.92" />
+</vector>

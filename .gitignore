@@ -1,0 +1,35 @@
+# 原始样本：体积大、含第三方版权内容，不入库
+base.apk
+com.tencent.tmgp.dfm.apk
+
+# 反编译工具与解包产物
+work/tools/
+work/game/
+work/dex/
+work/base/
+work/indep_*.log
+
+# 构建产物 / 中间文件
+apk/build/
+apk/out/
+apk/.gradle/
+dfm_apk_build/
+interop/run/
+*.class
+*.jar
+*.zip
+
+# 签名密钥（首次构建会自动生成）
+*.keystore
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# 游戏原始 dex / 资源（第三方版权内容，不入库）
+work/gamedex/
+work/out/*/resources/
+work/out/indep_jadx/
