@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# test shim standing in for `su -c` (pretends UID 0, executes locally)
-if [ "${1:-}" = "id -u" ]; then echo 0; exit 0; fi
-exec sh -c "$1"
