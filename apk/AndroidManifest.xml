@@ -21,15 +21,25 @@
         android:label="DFM 画质工坊"
         android:theme="@style/AppTheme">
 
+        <!-- 真正的界面：不带 LAUNCHER，桌面图标由下面的 alias 提供，可运行时禁用 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="DFM 画质工坊">
+            android:label="DFM 画质工坊" />
+
+        <!-- 桌面入口别名：隐藏图标 = 禁用这个组件；MainActivity 仍然可以 am start 打开 -->
+        <activity-alias
+            android:name=".Launcher"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:label="DFM 画质工坊"
+            android:icon="@mipmap/ic_launcher">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!-- 设置读取通道：游戏进程内的模块通过 ContentResolver 查询 -->
         <provider

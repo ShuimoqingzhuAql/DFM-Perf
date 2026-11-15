@@ -40,6 +40,9 @@ public class MainActivity extends Activity {
     private TextView targetText;
     private TextView statusText;
     private MiuiSwitch renderSwitch;
+    private MiuiSwitch iconSwitch;
+    private boolean iconSuppress = false;
+    private static final String LAUNCHER_ALIAS = "io.github.dfmperf.Launcher";
     private LinearLayout renderSection;
 
     private int versionCode = 1;
@@ -232,6 +235,54 @@ public class MainActivity extends Activity {
             @Override public void onClick(View v) { selfCheck(); }
         });
         add(content, check, 10);
+
+        // ---- 桌面图标 ----
+        LinearLayout iconCard = Ui.card(this);
+        iconCard.addView(Ui.text(this, "桌面图标", 15, Ui.ON_SURFACE, true));
+        LinearLayout iconRow = Ui.row(this);
+        iconRow.setPadding(0, Ui.dp(this, 10), 0, 0);
+        LinearLayout iconText = Ui.column(this);
+        iconText.addView(Ui.text(this, "在桌面显示图标", 15, Ui.ON_SURFACE, true));
+        iconText.addView(Ui.text(this, "关闭后桌面不再显示，可用 Activity Launcher 或 am start 打开。",
+                12, Ui.ON_SURFACE_VARIANT, false));
+        iconRow.addView(iconText, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        iconSwitch = new MiuiSwitch(this);
+        iconRow.addView(iconSwitch);
+        iconCard.addView(iconRow);
+        add(content, iconCard, 16);
+
+        iconSuppress = true;
+        iconSwitch.setChecked(aliasEnabled(), false);
+        iconSuppress = false;
+        iconSwitch.setOnCheckedChangeListener(new MiuiSwitch.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(MiuiSwitch view, boolean isChecked) {
+                if (iconSuppress) return;
+                if (isChecked) {
+                    setAliasEnabled(true);
+                    Toast.makeText(MainActivity.this, "已恢复桌面图标", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // 先弹确认，用户取消就保持显示
+                iconSuppress = true;
+                iconSwitch.setChecked(true);
+                iconSuppress = false;
+                RiskDialog.confirm(MainActivity.this, "隐藏桌面图标",
+                        "隐藏后桌面不再显示本应用图标。\n\n重新打开方式：\n"
+                                + "1. 用 Activity Launcher 等工具打开 io.github.dfmperf/.MainActivity；\n"
+                                + "2. 或在终端执行：su -c am start -n io.github.dfmperf/.MainActivity\n\n"
+                                + "注意：隐藏后 LSPosed 管理器里的“打开”也可能失效，请先确认自己记得回来。",
+                        "隐藏", new Runnable() {
+                            @Override public void run() {
+                                setAliasEnabled(false);
+                                iconSuppress = true;
+                                iconSwitch.setChecked(false, true);
+                                iconSuppress = false;
+                                Toast.makeText(MainActivity.this, "已隐藏桌面图标", Toast.LENGTH_LONG).show();
+                            }
+                        });
+            }
+        });
 
         // ---- 使用步骤 ----
         LinearLayout steps = Ui.card(this);
@@ -569,8 +620,29 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void selfCheck() {
-        String[][] keys = {
+    private boolean aliasEnabled() {
+        try {
+            int state = getPackageManager().getComponentEnabledSetting(
+                    new android.content.ComponentName(getPackageName(), LAUNCHER_ALIAS));
+            return state != android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
+    private void setAliasEnabled(boolean enabled) {
+        try {
+            getPackageManager().setComponentEnabledSetting(
+                    new android.content.ComponentName(getPackageName(), LAUNCHER_ALIAS),
+                    enabled ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                            : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    android.content.pm.PackageManager.DONT_KILL_APP);
+        } catch (Throwable t) {
+            Toast.makeText(this, "操作失败：" + t, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void selfCheck() {        String[][] keys = {
                 {Prefs.MODE, "mode"},
                 {Prefs.QUALITY, "quality（画质枚举）"},
                 {Prefs.FPS, "fps（帧率枚举）"},
