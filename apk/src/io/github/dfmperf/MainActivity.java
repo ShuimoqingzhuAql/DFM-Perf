@@ -243,7 +243,7 @@ public class MainActivity extends Activity {
         iconRow.setPadding(0, Ui.dp(this, 10), 0, 0);
         LinearLayout iconText = Ui.column(this);
         iconText.addView(Ui.text(this, "在桌面显示图标", 15, Ui.ON_SURFACE, true));
-        iconText.addView(Ui.text(this, "关闭后桌面不再显示，可用 Activity Launcher 或 am start 打开。",
+        iconText.addView(Ui.text(this, "关闭后桌面不再显示；从 LSPosed 模块页点「打开」仍可进入。",
                 12, Ui.ON_SURFACE_VARIANT, false));
         iconRow.addView(iconText, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -268,10 +268,11 @@ public class MainActivity extends Activity {
                 iconSwitch.setChecked(true);
                 iconSuppress = false;
                 RiskDialog.confirm(MainActivity.this, "隐藏桌面图标",
-                        "隐藏后桌面不再显示本应用图标。\n\n重新打开方式：\n"
-                                + "1. 用 Activity Launcher 等工具打开 io.github.dfmperf/.MainActivity；\n"
-                                + "2. 或在终端执行：su -c am start -n io.github.dfmperf/.MainActivity\n\n"
-                                + "注意：隐藏后 LSPosed 管理器里的“打开”也可能失效，请先确认自己记得回来。",
+                        "隐藏后桌面不再显示本应用图标。\n\n"
+                                + "重新打开：打开 LSPosed 管理器 → 模块 → DFM 画质工坊 → 右上角菜单「打开」，"
+                                + "即可进入本页把图标重新打开。\n\n"
+                                + "如果 LSPosed 里找不到入口，也可以在终端执行：\n"
+                                + "su -c am start -n io.github.dfmperf/.MainActivity",
                         "隐藏", new Runnable() {
                             @Override public void run() {
                                 setAliasEnabled(false);

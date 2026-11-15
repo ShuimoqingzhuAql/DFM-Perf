@@ -21,11 +21,17 @@
         android:label="DFM 画质工坊"
         android:theme="@style/AppTheme">
 
-        <!-- 真正的界面：不带 LAUNCHER，桌面图标由下面的 alias 提供，可运行时禁用 -->
+        <!-- 真正的界面：不带 LAUNCHER，桌面图标由下面的 alias 提供，可运行时禁用；
+             同时声明 Xposed 标准设置入口，LSPosed 模块页的「打开」靠它，隐藏图标后仍可进入 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="DFM 画质工坊" />
+            android:label="DFM 画质工坊">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
+            </intent-filter>
+        </activity>
 
         <!-- 桌面入口别名：隐藏图标 = 禁用这个组件；MainActivity 仍然可以 am start 打开 -->
         <activity-alias
