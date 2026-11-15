@@ -124,10 +124,6 @@ public final class Material {
         int flags;
     }
 
-    private static final class Candidate {
-        long first, second;
-    }
-
     /** 返回 {first, second} 文件偏移列表（尚未认证）。 */
     public static List<long[]> scan(File lib) throws Exception {
         List<Seg> exec = new ArrayList<>();

@@ -200,10 +200,4 @@ public final class Ui {
         box.addView(inner, lp);
         return box;
     }
-
-    public static View spacer(Context c, float dp) {
-        View v = new View(c);
-        v.setLayoutParams(new LinearLayout.LayoutParams(1, dp(c, dp)));
-        return v;
-    }
 }

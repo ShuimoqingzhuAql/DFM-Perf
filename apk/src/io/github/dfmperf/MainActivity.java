@@ -23,9 +23,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 import io.github.dfmperf.core.ConfigPlan;
 
@@ -45,7 +42,6 @@ public class MainActivity extends Activity {
     private static final String LAUNCHER_ALIAS = "io.github.dfmperf.Launcher";
     private LinearLayout renderSection;
 
-    private int versionCode = 1;
     private boolean suppress = false;
     private boolean dragging = false;
     private final int[] presetValues = {100, 90, 80, 70};
@@ -55,7 +51,6 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Ui.init(this);
-        versionCode = getVersionCode();
         applyWindow();
         setContentView(buildContent());
         loadPrefs();
@@ -71,14 +66,6 @@ public class MainActivity extends Activity {
     public void onConfigurationChanged(android.content.res.Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         recreate();
-    }
-
-    private int getVersionCode() {
-        try {
-            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-        } catch (Exception e) {
-            return 1;
-        }
     }
 
     private void applyWindow() {

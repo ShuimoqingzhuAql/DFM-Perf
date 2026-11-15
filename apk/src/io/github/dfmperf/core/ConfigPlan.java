@@ -11,7 +11,6 @@ import java.util.Arrays;
 public final class ConfigPlan {
     public static final String PAD_SECTION = "/Script/PerfGear.PerfGearAndroidPadSizeConfig";
     public static final String[] QUALITY_LABELS = {"流畅", "标准", "精致", "高清", "极致", "终极"};
-    public static final int[] QUALITY_VALUES = {0, 1, 2, 3, 4, 5};
     public static final String[] FPS_LABELS = {"60 帧", "90 帧", "120 帧", "144 帧", "165 帧", "185 帧"};
     public static final int[] FPS_VALUES = {2, 7, 8, 9, 10, 11};
 

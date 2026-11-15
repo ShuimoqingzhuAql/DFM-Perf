@@ -151,14 +151,12 @@ public final class RiskDialog {
         showThree(activity, gate, "使用前必读｜风险告知", riskBody(), RISK_FOOT, true, true,
                 new Runnable() {
                     @Override public void run() {
-                        Prefs.setRiskAcceptedVersion(activity, versionCode(activity));
                         if (onAccept != null) onAccept.run();
                     }
                 },
                 new Runnable() {
                     @Override public void run() {
                         Prefs.setRiskNeverShow(activity, true);
-                        Prefs.setRiskAcceptedVersion(activity, versionCode(activity));
                         if (onAccept != null) onAccept.run();
                     }
                 }, null);
@@ -350,11 +348,4 @@ public final class RiskDialog {
         w.setGravity(Gravity.CENTER);
     }
 
-    private static int versionCode(Context c) {
-        try {
-            return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode;
-        } catch (Exception e) {
-            return 1;
-        }
-    }
 }

@@ -15,7 +15,6 @@ public final class Prefs {
     public static final String RENDER_CUSTOM = "renderCustom"; // 是否启用自定义渲染比例
 
     public static final String RISK_NEVER = "riskNeverShow";
-    public static final String RISK_VERSION = "riskAcceptedVersion";
     public static final String RENDER_HINT_NEVER = "renderHintNever";
 
     private Prefs() {}
@@ -30,15 +29,6 @@ public final class Prefs {
 
     public static void setRiskNeverShow(Context c, boolean v) {
         get(c).edit().putBoolean(RISK_NEVER, v).commit();
-        makeReadable(c);
-    }
-
-    public static int riskAcceptedVersion(Context c) {
-        return get(c).getInt(RISK_VERSION, -1);
-    }
-
-    public static void setRiskAcceptedVersion(Context c, int v) {
-        get(c).edit().putInt(RISK_VERSION, v).commit();
         makeReadable(c);
     }
 
