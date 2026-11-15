@@ -243,7 +243,7 @@ public class MainActivity extends Activity {
         iconRow.setPadding(0, Ui.dp(this, 10), 0, 0);
         LinearLayout iconText = Ui.column(this);
         iconText.addView(Ui.text(this, "在桌面显示图标", 15, Ui.ON_SURFACE, true));
-        iconText.addView(Ui.text(this, "关闭后桌面不再显示；从 LSPosed 模块页点「打开」仍可进入。",
+        iconText.addView(Ui.text(this, "关闭后桌面不再显示；在 LSPosed 模块页点右下角圆形按钮仍可进入。",
                 12, Ui.ON_SURFACE_VARIANT, false));
         iconRow.addView(iconText, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -269,7 +269,7 @@ public class MainActivity extends Activity {
                 iconSuppress = false;
                 RiskDialog.confirm(MainActivity.this, "隐藏桌面图标",
                         "隐藏后桌面不再显示本应用图标。\n\n"
-                                + "重新打开：打开 LSPosed 管理器 → 模块 → DFM 画质工坊 → 右上角菜单「打开」，"
+                                + "重新打开：LSPosed 管理器 → 模块 → DFM 画质工坊 → 点右下角的圆形按钮（▶），"
                                 + "即可进入本页把图标重新打开。\n\n"
                                 + "如果 LSPosed 里找不到入口，也可以在终端执行：\n"
                                 + "su -c am start -n io.github.dfmperf/.MainActivity",
