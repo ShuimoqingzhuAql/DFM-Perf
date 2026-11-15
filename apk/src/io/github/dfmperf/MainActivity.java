@@ -2,7 +2,6 @@ package io.github.dfmperf;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
-import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
@@ -23,10 +22,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import io.github.dfmperf.core.ConfigPlan;
 
-/** Material 3 风格设置界面（支持深色模式）。写入 SharedPreferences，LSPosed 模块在游戏启动时读取。 */
+/** 设置界面：画质 / 帧率 / 可选渲染比例，写入 SharedPreferences 由模块在游戏启动时读取。 */
 public class MainActivity extends Activity {
     private Spinner qualitySpinner;
     private Spinner fpsSpinner;
@@ -38,12 +36,13 @@ public class MainActivity extends Activity {
     private TextView statusText;
     private MiuiSwitch renderSwitch;
     private MiuiSwitch iconSwitch;
-    private boolean iconSuppress = false;
-    private static final String LAUNCHER_ALIAS = "io.github.dfmperf.Launcher";
     private LinearLayout renderSection;
 
     private boolean suppress = false;
+    private boolean loading = false;
+
     private boolean dragging = false;
+    private static final String LAUNCHER_ALIAS = "io.github.dfmperf.Launcher";
     private final int[] presetValues = {100, 90, 80, 70};
     private TextView[] presetChips;
 
@@ -57,8 +56,10 @@ public class MainActivity extends Activity {
         updateLabels();
         if (!Prefs.riskNeverShow(this)) {
             RiskDialog.showRisk(this, true, new Runnable() {
-                @Override public void run() { }
+                @Override public void run() { maybeScopeHint(); }
             });
+        } else {
+            maybeScopeHint();
         }
     }
 
@@ -74,11 +75,8 @@ public class MainActivity extends Activity {
         w.setNavigationBarColor(Ui.SURFACE);
         if (Build.VERSION.SDK_INT >= 23) {
             int flags = w.getDecorView().getSystemUiVisibility();
-            if (Ui.isDark()) {
-                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            } else {
-                flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            }
+            flags = Ui.isDark() ? (flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
+                    : (flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
             w.getDecorView().setSystemUiVisibility(flags);
         }
     }
@@ -91,7 +89,8 @@ public class MainActivity extends Activity {
         int pad = Ui.dp(this, 20);
         bar.setPadding(pad, Ui.statusBarHeight(this) + Ui.dp(this, 14), pad, Ui.dp(this, 6));
         bar.addView(Ui.text(this, "DFM 画质工坊", 24, Ui.ON_SURFACE, true));
-        TextView subtitle = Ui.text(this, "三角洲行动 · 国服 · LSPosed 模块 · v1.0", 12, Ui.ON_SURFACE_VARIANT, false);
+        TextView subtitle = Ui.text(this, "三角洲行动 · 国服 · LSPosed 模块 · v2.8", 12,
+                Ui.ON_SURFACE_VARIANT, false);
         subtitle.setPadding(0, Ui.dp(this, 2), 0, 0);
         bar.addView(subtitle);
         root.addView(bar);
@@ -103,15 +102,15 @@ public class MainActivity extends Activity {
         content.setClipChildren(false);
         content.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 16), Ui.dp(this, 52));
 
-        // ---- 当前状态 ----
+        // 当前状态
         LinearLayout statusCard = Ui.card(this);
-        statusCard.addView(Ui.text(this, "当前状态", 13, Ui.ON_SURFACE_VARIANT, true));
+        statusCard.addView(Ui.text(this, "当前状态", 15, Ui.ON_SURFACE, true));
         statusText = Ui.text(this, "", 15, Ui.ON_SURFACE, false);
         statusText.setPadding(0, Ui.dp(this, 6), 0, 0);
         statusCard.addView(statusText);
         add(content, statusCard, 0);
 
-        // ---- 目标设置 ----
+        // 目标设置
         LinearLayout card = Ui.card(this);
         card.addView(Ui.text(this, "目标设置", 15, Ui.ON_SURFACE, true));
 
@@ -123,30 +122,21 @@ public class MainActivity extends Activity {
         fpsSpinner = spinner(ConfigPlan.FPS_LABELS);
         card.addView(Ui.field(this, fpsSpinner), fullWidth());
 
-        // ---- 进阶开关 ----
-        LinearLayout switchRow = Ui.row(this);
-        switchRow.setPadding(0, Ui.dp(this, 22), 0, 0);
-        LinearLayout switchText = Ui.column(this);
-        switchText.addView(Ui.text(this, "自定义渲染比例（进阶）", 15, Ui.ON_SURFACE, true));
-        switchText.addView(Ui.text(this, "默认关闭，保持原生分辨率。", 12, Ui.ON_SURFACE_VARIANT, false));
-        TextView link = Ui.text(this, "查看功能说明", 12, Ui.PRIMARY, false);
-        link.setPaintFlags(link.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
-        link.setPadding(0, Ui.dp(this, 6), 0, 0);
-        link.setClickable(true);
-        link.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { RiskDialog.showRenderInfo(MainActivity.this); }
-        });
-        switchText.addView(link);
-        switchRow.addView(switchText, new LinearLayout.LayoutParams(0,
+        // 进阶开关：标题与“画质档位”“帧率档位”同一套字号与缩进，开关跟在标题行
+        LinearLayout advHeader = Ui.row(this);
+        advHeader.setGravity(Gravity.CENTER_VERTICAL);
+        advHeader.addView(label("自定义渲染比例（进阶）"), new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         renderSwitch = new MiuiSwitch(this);
-        switchRow.addView(renderSwitch);
-        card.addView(switchRow);
+        advHeader.addView(renderSwitch);
+        card.addView(advHeader);
 
-        // ---- 折叠区 ----
+        TextView advDesc = Ui.text(this, "默认关闭，保持原生分辨率。", 12, Ui.ON_SURFACE_VARIANT, false);
+        advDesc.setPadding(0, Ui.dp(this, 2), 0, 0);
+        card.addView(advDesc);
+
+        // 折叠区
         renderSection = Ui.column(this);
-        renderSection.setPadding(0, Ui.dp(this, 4), 0, 0);
-
         ratioValue = Ui.text(this, "100%", 30, Ui.ON_SURFACE, true);
         ratioValue.setPadding(0, Ui.dp(this, 18), 0, 0);
         renderSection.addView(ratioValue);
@@ -162,7 +152,6 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         sliderLp.topMargin = Ui.dp(this, 10);
         renderSection.addView(ratioBar, sliderLp);
-
         renderSection.addView(buildPresets());
 
         TextView shortEdgeLabel = label("渲染基准短边（像素）");
@@ -183,15 +172,14 @@ public class MainActivity extends Activity {
         renderSection.addView(helper);
 
         renderSection.setVisibility(View.GONE);
-        card.addView(renderSection, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(renderSection, fullWidth());
 
         targetText = Ui.text(this, "", 14, Ui.PRIMARY, true);
         targetText.setPadding(0, Ui.dp(this, 20), 0, 0);
         card.addView(targetText);
         add(content, card, 12);
 
-        // ---- 操作 ----
+        // 操作
         Button save = Ui.filled(this, "保存并下次启动生效");
         save.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 52)));
@@ -206,8 +194,8 @@ public class MainActivity extends Activity {
         defaults.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 RiskDialog.confirm(MainActivity.this, "恢复默认",
-                        "将删除本工具写入的画质、帧率与渲染覆盖项，默认档位由游戏下次启动重建。\n\n"
-                                + "不会改动账号数据、安装包与 UserGameplay.ini。",
+                        "将删除本工具写入的画质、帧率与渲染覆盖项。\n\n"
+                                + "删除动作会在下次启动游戏时由模块执行，随后游戏会重建默认档位。",
                         "恢复默认", new Runnable() {
                             @Override public void run() { saveCurrentValues("defaults"); }
                         });
@@ -217,73 +205,36 @@ public class MainActivity extends Activity {
 
         Button check = Ui.outlined(this, "自检：检查模块能否读到设置");
         check.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 50)));
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 52)));
         check.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { selfCheck(); }
         });
         add(content, check, 10);
 
-        // ---- 桌面图标 ----
+        // 桌面图标
         LinearLayout iconCard = Ui.card(this);
         iconCard.addView(Ui.text(this, "桌面图标", 15, Ui.ON_SURFACE, true));
         LinearLayout iconRow = Ui.row(this);
         iconRow.setPadding(0, Ui.dp(this, 10), 0, 0);
-        LinearLayout iconText = Ui.column(this);
-        iconText.addView(Ui.text(this, "在桌面显示图标", 15, Ui.ON_SURFACE, true));
-        iconText.addView(Ui.text(this, "关闭后桌面不再显示；在 LSPosed 模块页点右下角圆形按钮仍可进入。",
-                12, Ui.ON_SURFACE_VARIANT, false));
-        iconRow.addView(iconText, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        iconRow.addView(Ui.text(this, "关闭后桌面不再显示，在 LSPosed 模块页点右下角圆形按钮，仍可进入。",
+                13, Ui.ON_SURFACE_VARIANT, false),
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         iconSwitch = new MiuiSwitch(this);
         iconRow.addView(iconSwitch);
         iconCard.addView(iconRow);
-        add(content, iconCard, 16);
+        add(content, iconCard, 12);
 
-        iconSuppress = true;
-        iconSwitch.setChecked(aliasEnabled(), false);
-        iconSuppress = false;
-        iconSwitch.setOnCheckedChangeListener(new MiuiSwitch.OnCheckedChangeListener() {
-            @Override public void onCheckedChanged(MiuiSwitch view, boolean isChecked) {
-                if (iconSuppress) return;
-                if (isChecked) {
-                    setAliasEnabled(true);
-                    Toast.makeText(MainActivity.this, "已恢复桌面图标", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                // 先弹确认，用户取消就保持显示
-                iconSuppress = true;
-                iconSwitch.setChecked(true);
-                iconSuppress = false;
-                RiskDialog.confirm(MainActivity.this, "隐藏桌面图标",
-                        "隐藏后桌面不再显示本应用图标。\n\n"
-                                + "重新打开：LSPosed 管理器 → 模块 → DFM 画质工坊 → 点右下角的圆形按钮（▶），"
-                                + "即可进入本页把图标重新打开。\n\n"
-                                + "如果 LSPosed 里找不到入口，也可以在终端执行：\n"
-                                + "su -c am start -n io.github.dfmperf/.MainActivity",
-                        "隐藏", new Runnable() {
-                            @Override public void run() {
-                                setAliasEnabled(false);
-                                iconSuppress = true;
-                                iconSwitch.setChecked(false, true);
-                                iconSuppress = false;
-                                Toast.makeText(MainActivity.this, "已隐藏桌面图标", Toast.LENGTH_LONG).show();
-                            }
-                        });
-            }
-        });
-
-        // ---- 使用步骤 ----
+        // 使用步骤
         LinearLayout steps = Ui.card(this);
         steps.addView(Ui.text(this, "使用步骤", 15, Ui.ON_SURFACE, true));
         steps.addView(bodyText(
                 "1. 在 LSPosed 中启用本模块，作用域勾选“三角洲行动”（com.tencent.tmgp.dfm）。\n\n"
-              + "2. 在本页选好档位，点“保存并下次启动生效”。\n\n"
-              + "3. 完全退出游戏（从最近任务划掉）后重新启动，模块会在游戏读配置之前写入。\n\n"
-              + "4. 结果看 LSPosed 日志，标签 DFMPerf，例如“完成: 已写入并回读校验：终极 / 120 帧 / 渲染 100%”。\n\n"
-              + "5. 在游戏内改动画质或帧率只会影响当次会话，重启游戏后会回到这里保存的档位。"));
+              + "2. 想要高帧率建议选「极致」：终极档目前受云端限制，实战只能跑到 60 帧（靶场不受影响）。\n\n"
+              + "3. 选好档位后点“保存并下次启动生效”，把游戏完全退出再启动。\n\n"
+              + "4. 结果看 LSPosed 日志，标签 DFMPerf。"));
         add(content, steps, 20);
 
-        // ---- 风险 ----
+        // 风险
         LinearLayout risk = Ui.card(this);
         risk.addView(Ui.text(this, "风险提示", 15, Ui.ON_SURFACE, true));
         risk.addView(bodyText("修改游戏配置可能触发反作弊，导致账号受限或封禁；可能违反用户协议；不保证实测帧率。仅供学习研究使用，风险自负。"));
@@ -302,11 +253,42 @@ public class MainActivity extends Activity {
             @Override public void onClick(View v) { RiskDialog.showRenderInfo(MainActivity.this); }
         });
         add(risk, renderInfo, 8);
+
+        Button qualityInfo = Ui.outlined(this, "查看画质档位说明");
+        qualityInfo.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 48)));
+        qualityInfo.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { RiskDialog.showUltimateInfo(MainActivity.this); }
+        });
+        add(risk, qualityInfo, 8);
+
+        Button valueHelp = Ui.outlined(this, "这些值是什么意思");
+        valueHelp.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 48)));
+        valueHelp.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { RiskDialog.showValueHelp(MainActivity.this); }
+        });
+        add(risk, valueHelp, 8);
         add(content, risk, 12);
 
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        // 监听
+        qualitySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updateLabels();
+                if (!loading && position == 5) warnUltimate();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        fpsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                updateLabels();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
 
         renderSwitch.setOnCheckedChangeListener(new MiuiSwitch.OnCheckedChangeListener() {
             @Override public void onCheckedChanged(MiuiSwitch view, boolean isChecked) {
@@ -335,14 +317,29 @@ public class MainActivity extends Activity {
             }
         });
 
-        AdapterView.OnItemSelectedListener listener = new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                updateLabels();
+        iconSwitch.setOnCheckedChangeListener(new MiuiSwitch.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(MiuiSwitch view, boolean isChecked) {
+                if (suppress) return;
+                if (!isChecked) {
+                    suppress = true;
+                    iconSwitch.setChecked(true);
+                    suppress = false;
+                    RiskDialog.confirm(MainActivity.this, "隐藏桌面图标",
+                            "隐藏后桌面不再显示本应用图标。\n\n"
+                                    + "重新打开：LSPosed 管理器 → 模块 → DFM 画质工坊 → 点右下角的圆形按钮（▶）。",
+                            "隐藏", new Runnable() {
+                                @Override public void run() {
+                                    setAliasEnabled(false);
+                                    suppress = true;
+                                    iconSwitch.setChecked(false, true);
+                                    suppress = false;
+                                }
+                            });
+                    return;
+                }
+                setAliasEnabled(true);
             }
-            @Override public void onNothingSelected(AdapterView<?> parent) { }
-        };
-        qualitySpinner.setOnItemSelectedListener(listener);
-        fpsSpinner.setOnItemSelectedListener(listener);
+        });
 
         ratioBar.setOnStartTracking(new MiuiSlider.OnStartTracking() {
             @Override public void onStartTracking(MiuiSlider view) { dragging = true; updateLabels(); }
@@ -361,7 +358,25 @@ public class MainActivity extends Activity {
         return root;
     }
 
-    /** 滑条下方的四个预设档。 */
+    private void maybeScopeHint() {
+        if (Prefs.scopeHintShown(this)) return;
+        Prefs.setScopeHintShown(this, true);
+        RiskDialog.showScopeHint(this);
+    }
+
+    private void warnUltimate() {
+        if (Prefs.ultimateHintNever(this)) return;
+        RiskDialog.showUltimateHint(this, new Runnable() {
+            @Override public void run() {
+                loading = true;
+                qualitySpinner.setSelection(4, false);
+                loading = false;
+                updateLabels();
+                Toast.makeText(MainActivity.this, "已切换到极致", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private View buildPresets() {
         LinearLayout row = Ui.row(this);
         row.setPadding(0, Ui.dp(this, 12), 0, 0);
@@ -391,7 +406,6 @@ public class MainActivity extends Activity {
     }
 
     private void updatePresetChips(int ratio) {
-        if (presetChips == null) return;
         boolean on = renderSwitch != null && renderSwitch.isChecked();
         for (int i = 0; i < presetChips.length; i++) {
             boolean selected = on && ratio == presetValues[i];
@@ -406,13 +420,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void setRenderSectionVisible(boolean visible) {
+        renderSection.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
     private LinearLayout.LayoutParams fullWidth() {
         return new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-    }
-
-    private void setRenderSectionVisible(boolean visible) {
-        renderSection.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     private void add(LinearLayout parent, View v, int gapAboveDp) {
@@ -484,27 +498,22 @@ public class MainActivity extends Activity {
         int edge = parseIntSafe(shortEdgeEdit.getText().toString(), defaultShortEdge());
         int px = ConfigPlan.padPixels(ratio, edge);
         ratioValue.setText(ratio + "%");
-        if (ratio == 100) {
-            ratioCaption.setText("原生分辨率，不额外限制");
-        } else {
-            ratioCaption.setText("目标短边 " + px + " px（" + edge + " × " + ratio + "%）");
-        }
+        ratioCaption.setText(ratio == 100 ? "原生分辨率，不额外限制"
+                : "目标短边 " + px + " px（" + edge + " × " + ratio + "%）");
         int q = Math.max(0, qualitySpinner.getSelectedItemPosition());
         int fpsEnum = ConfigPlan.FPS_VALUES[Math.max(0, fpsSpinner.getSelectedItemPosition())];
         int fps = ConfigPlan.fpsForInternal(fpsEnum);
-        if (ratio == 100) {
-            targetText.setText("将写入：" + ConfigPlan.qualityLabel(q) + " / " + fps
-                    + " 帧 / 渲染 100%（原生，不额外限制）");
-        } else {
-            targetText.setText("将写入：" + ConfigPlan.qualityLabel(q) + " / " + fps
-                    + " 帧 / 渲染 " + ratio + "%（短边目标 " + px + " px）");
-        }
+        String line = "将写入：" + ConfigPlan.qualityLabel(q) + " / " + fps + " 帧 / 渲染 " + ratio + "%";
+        if (ratio != 100) line += "（短边目标 " + px + " px）";
+        if (q == 5) line += "\n注意：终极档目前实战只能到 60 帧（靶场不受限），建议改用「极致」。";
+        targetText.setText(line);
         if (!dragging) updatePresetChips(ratio);
     }
 
     private void loadPrefs() {
+        loading = true;
         SharedPreferences sp = Prefs.get(this);
-        int q = sp.getInt(Prefs.QUALITY, 3);
+        int q = sp.getInt(Prefs.QUALITY, 4);
         int f = sp.getInt(Prefs.FPS, 2);
         int ratio = sp.getInt(Prefs.RATIO, 100);
         int shortEdge = sp.getInt(Prefs.SHORT_EDGE, defaultShortEdge());
@@ -519,18 +528,19 @@ public class MainActivity extends Activity {
         shortEdgeEdit.setText(Integer.toString(shortEdge));
         suppress = true;
         renderSwitch.setChecked(custom, false);
+        iconSwitch.setChecked(aliasEnabled(), false);
         suppress = false;
         setRenderSectionVisible(custom);
+        loading = false;
         refreshStatus();
     }
 
     private void refreshStatus() {
         SharedPreferences sp = Prefs.get(this);
-        String mode = sp.getString(Prefs.MODE, "off");
         boolean custom = sp.getBoolean(Prefs.RENDER_CUSTOM, false);
         int ratio = custom ? sp.getInt(Prefs.RATIO, 100) : 100;
-        statusText.setText("模式：" + modeName(mode) + "\n已保存："
-                + ConfigPlan.qualityLabel(sp.getInt(Prefs.QUALITY, 3)) + " / "
+        statusText.setText("模式：" + modeName(sp.getString(Prefs.MODE, "off")) + "\n已保存："
+                + ConfigPlan.qualityLabel(sp.getInt(Prefs.QUALITY, 4)) + " / "
                 + ConfigPlan.fpsLabel(sp.getInt(Prefs.FPS, 2)) + " / 渲染 " + ratio + "%");
     }
 
@@ -552,43 +562,41 @@ public class MainActivity extends Activity {
         }
         String body = "即将写入：" + ConfigPlan.qualityLabel(q) + " / " + ConfigPlan.fpsForInternal(f)
                 + " 帧 / 渲染 " + ratio + "%\n\n目标文件：Engine.ini、Game.ini\n\n"
-                + "写入前会在内存里保留原内容，失败自动回滚（不生成备份文件）。"
-                + "改配置仍有被反作弊识别的风险，且“配置档位 ≠ 实测帧率”。建议先完全退出游戏。";
+                + "建议先完全退出游戏。写入失败会自动回滚。";
         RiskDialog.confirm(this, "确认写入", body, "确认写入", new Runnable() {
-            @Override public void run() {
-                save(q, f, ratio, shortEdge, "apply");
-            }
+            @Override public void run() { save(q, f, ratio, shortEdge, "apply"); }
         });
     }
 
     private void saveCurrentValues(String mode) {
         SharedPreferences sp = Prefs.get(this);
-        save(sp.getInt(Prefs.QUALITY, 3), sp.getInt(Prefs.FPS, 2),
+        save(sp.getInt(Prefs.QUALITY, 4), sp.getInt(Prefs.FPS, 2),
                 sp.getInt(Prefs.RATIO, 100), sp.getInt(Prefs.SHORT_EDGE, defaultShortEdge()), mode);
     }
 
     private void save(int q, int f, int ratio, int shortEdge, String mode) {
         boolean custom = renderSwitch.isChecked();
-        int storedRatio = custom ? ratio : 100;
         Prefs.get(this).edit()
                 .putString(Prefs.MODE, mode)
                 .putInt(Prefs.QUALITY, q)
                 .putInt(Prefs.FPS, f)
-                .putInt(Prefs.RATIO, storedRatio)
+                .putInt(Prefs.RATIO, custom ? ratio : 100)
                 .putInt(Prefs.SHORT_EDGE, shortEdge)
                 .putBoolean(Prefs.RENDER_CUSTOM, custom)
                 .commit();
         Prefs.makeReadable(this);
         refreshStatus();
         updateLabels();
-        Toast.makeText(this, "已保存，重启游戏后生效", Toast.LENGTH_LONG).show();
-        if ("apply".equals(mode)) {
-            RiskDialog.confirm(this, "已保存",
-                    "设置已保存，会在下次启动游戏时写入。\n\n现在启动《三角洲行动》吗？",
-                    "启动游戏", new Runnable() {
-                        @Override public void run() { launchGame(); }
-                    });
-        }
+        boolean applying = "apply".equals(mode);
+        Toast.makeText(this, applying ? "已保存，重启游戏后生效" : "已记录，重启游戏后恢复默认",
+                Toast.LENGTH_LONG).show();
+        String prompt = applying
+                ? "设置已保存，会在下次启动游戏时写入。\n\n现在启动《三角洲行动》吗？"
+                : "恢复默认会在下次启动游戏时执行：模块先删除覆盖项，游戏再重建默认档位。\n\n现在启动《三角洲行动》吗？";
+        RiskDialog.confirm(this, applying ? "已保存" : "恢复默认已记录", prompt, "启动游戏",
+                new Runnable() {
+                    @Override public void run() { launchGame(); }
+                });
     }
 
     private void launchGame() {
@@ -596,7 +604,6 @@ public class MainActivity extends Activity {
             android.content.Intent intent =
                     getPackageManager().getLaunchIntentForPackage("com.tencent.tmgp.dfm");
             if (intent == null) {
-                // 兜底：显式构造 LAUNCHER intent（仍需 <queries> 才能解析到）
                 intent = new android.content.Intent(android.content.Intent.ACTION_MAIN)
                         .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
                         .setPackage("com.tencent.tmgp.dfm")
@@ -630,7 +637,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void selfCheck() {        String[][] keys = {
+    private void selfCheck() {
+        String[][] keys = {
                 {Prefs.MODE, "mode"},
                 {Prefs.QUALITY, "quality（画质枚举）"},
                 {Prefs.FPS, "fps（帧率枚举）"},
@@ -652,10 +660,9 @@ public class MainActivity extends Activity {
             } finally {
                 if (c != null) c.close();
             }
-            sb.append(k[1]).append(" = ").append(v == null ? "<无数据>" : v).append('\n');
+            sb.append(k[1]).append(" = ").append(v == null ? "无数据" : v).append('\n');
         }
-        sb.append("\n通过 ContentProvider 读取。游戏进程里的模块走同一条通道；")
-          .append("若这里能看到 mode = apply，就说明设置能被模块读到。");
+        sb.append("通过 ContentProvider 读取，游戏进程里的模块走同一条通道。");
         RiskDialog.info(this, "设置自检", sb.toString());
     }
 

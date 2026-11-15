@@ -152,7 +152,11 @@ public final class Ui {
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         b.setTextColor(ON_PRIMARY);
-        b.setBackground(ripple(c, fill(c, PRIMARY, 24)));
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(PRIMARY);
+        bg.setCornerRadius(dp(c, 24));
+        bg.setStroke(dp(c, 1), PRIMARY);
+        b.setBackground(ripple(c, bg));
         b.setMinHeight(dp(c, 52));
         b.setPadding(dp(c, 24), 0, dp(c, 24), 0);
         b.setStateListAnimator(null);

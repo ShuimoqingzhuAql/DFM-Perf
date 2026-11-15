@@ -213,6 +213,61 @@ public final class RiskDialog {
         showInfoBody(activity, "使用前必读｜风险告知", riskBody(), RISK_FOOT, true);
     }
 
+    // ------------------------------------------------------------ 画质档位说明
+    private static Body ultimateBody() {
+        return new Body() {
+            @Override public void fill(LinearLayout body, Context c) {
+                para(body, c, null,
+                        "靶场里「终极」可以跑到 185 帧，但大战场和实战对局会被压回 60 帧。");
+                para(body, c, "原因",
+                        "游戏的云端配置目前没有给「终极」画质开放高帧率机型，所以进入实战后，"
+                                + "帧率会被云端按默认档位重新压回 60。");
+                para(body, c, "怎么办",
+                        "想要稳定高帧率，请把画质改成「极致」——极致档不受这个限制，可以跑到屏幕刷新率上限。");
+                para(body, c, "什么时候终极才会生效",
+                        "如果以后官方云控放开了支持终极档 120 甚至更高帧率的机型，这里的设置才会真正生效。");
+            }
+        };
+    }
+
+    public static void showUltimateHint(final Activity activity, final Runnable onSwitchToExtreme) {
+        showThree(activity, false, "终极画质的高帧率限制", ultimateBody(), null, false, true,
+                new Runnable() {
+                    @Override public void run() {
+                        if (onSwitchToExtreme != null) onSwitchToExtreme.run();
+                    }
+                },
+                new Runnable() {
+                    @Override public void run() {
+                        Prefs.setUltimateHintNever(activity, true);
+                    }
+                }, null);
+    }
+
+    public static void showUltimateInfo(final Activity activity) {
+        showInfoBody(activity, "画质档位说明", ultimateBody(), null, false);
+    }
+
+    // ------------------------------------------------------------ 自检与数值说明
+    public static void showValueHelp(final Activity activity) {
+        showInfoBody(activity, "这些值是什么意思", new Body() {
+            @Override public void fill(LinearLayout body, Context c) {
+                para(body, c, null,
+                        "自检里看到的都是写进游戏配置的内部值，平时不需要手动改。");
+                para(body, c, "mode",
+                        "模块下次启动游戏时做什么。off 什么都不做；apply 按档位写入；defaults 删除本工具写入的覆盖项。");
+                para(body, c, "quality",
+                        "画质枚举。0 流畅、1 标准、2 精致、3 高清、4 极致、5 终极。");
+                para(body, c, "fps",
+                        "帧率枚举，不是帧数本身。2 是 60 帧，7 是 90，8 是 120，9 是 144，10 是 165，11 是 185。");
+                para(body, c, "renderCustom 与 ratio",
+                        "是否启用自定义渲染比例（1 开、0 关），以及比例本身。ratio 为 100 表示原生分辨率。");
+                para(body, c, "shortEdge",
+                        "渲染基准短边像素，比如 1200。");
+            }
+        }, null, false);
+    }
+
     private static void showInfoBody(Activity activity, String title, Body body, String foot, boolean footRed) {
         final Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -243,6 +298,7 @@ public final class RiskDialog {
 
         LinearLayout actions = Ui.row(activity);
         actions.setGravity(Gravity.END);
+        actions.setPadding(0, Ui.dp(activity, 12), 0, 0);
         Button ok = Ui.textButton(activity, "知道了");
         ok.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { dialog.dismiss(); }
@@ -256,6 +312,11 @@ public final class RiskDialog {
     // ------------------------------------------------------------ 二次确认
     public static void confirm(Activity activity, String title, String body,
                                String confirmLabel, final Runnable onConfirm) {
+        confirm(activity, title, body, "取消", confirmLabel, onConfirm);
+    }
+
+    public static void confirm(Activity activity, String title, String body, String cancelLabel,
+                               String confirmLabel, final Runnable onConfirm) {
         final Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
@@ -266,7 +327,7 @@ public final class RiskDialog {
 
         root.addView(Ui.text(activity, title, 22, Ui.ON_SURFACE, true));
         TextView text = Ui.text(activity, body, 14, Ui.ON_SURFACE_VARIANT, false);
-        text.setPadding(0, Ui.dp(activity, 12), 0, Ui.dp(activity, 8));
+        text.setPadding(0, Ui.dp(activity, 12), 0, 0);
         text.setTextIsSelectable(true);
         // 先量出正文真实高度，只有超过上限才用固定高度滚动；短文本不再留大片空白
         int screenWc = activity.getResources().getDisplayMetrics().widthPixels;
@@ -283,7 +344,8 @@ public final class RiskDialog {
 
         LinearLayout actions = Ui.row(activity);
         actions.setGravity(Gravity.END);
-        Button cancel = Ui.textButton(activity, "取消");
+        actions.setPadding(0, Ui.dp(activity, 12), 0, 0);
+        Button cancel = Ui.textButton(activity, cancelLabel == null ? "取消" : cancelLabel);
         cancel.setTextColor(Ui.ON_SURFACE_VARIANT);
         cancel.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { dialog.dismiss(); }
@@ -311,6 +373,11 @@ public final class RiskDialog {
 
     // ------------------------------------------------------------ 信息弹窗
     public static void info(Activity activity, String title, String body) {
+        info(activity, title, body, null, null);
+    }
+
+    public static void info(Activity activity, String title, String body,
+                            String actionLabel, final Runnable action) {
         final Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         LinearLayout root = Ui.column(activity);
@@ -319,11 +386,24 @@ public final class RiskDialog {
         root.setPadding(p, p, p, Ui.dp(activity, 12));
         root.addView(Ui.text(activity, title, 22, Ui.ON_SURFACE, true));
         TextView text = Ui.text(activity, body, 14, Ui.ON_SURFACE_VARIANT, false);
-        text.setPadding(0, Ui.dp(activity, 12), 0, Ui.dp(activity, 8));
-        text.setTextIsSelectable(true);
+        text.setPadding(0, Ui.dp(activity, 12), 0, 0);
         root.addView(text);
         LinearLayout actions = Ui.row(activity);
-        actions.setGravity(Gravity.END);
+        if (actionLabel != null) {
+            Button extra = Ui.textButton(activity, actionLabel);
+            extra.setTextColor(Ui.ON_SURFACE_VARIANT);
+            extra.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    dialog.dismiss();
+                    if (action != null) action.run();
+                }
+            });
+            actions.addView(extra);
+            View spacer = new View(activity);
+            actions.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        } else {
+            actions.setGravity(Gravity.END);
+        }
         Button ok = Ui.textButton(activity, "知道了");
         ok.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { dialog.dismiss(); }
@@ -333,6 +413,51 @@ public final class RiskDialog {
         dialog.setContentView(root);
         dialog.show();
         styleWindow(dialog, activity, 0.9, 0);
+    }
+
+    // ------------------------------------------------------------ 首次启动：作用域提醒
+    public static void showScopeHint(final Activity activity) {
+        final Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout root = Ui.column(activity);
+        root.setBackground(Ui.fill(activity, Ui.SURFACE, 28));
+        int p = Ui.dp(activity, 24);
+        root.setPadding(p, p, p, Ui.dp(activity, 12));
+        root.addView(Ui.text(activity, "别忘了勾选作用域", 22, Ui.ON_SURFACE, true));
+        TextView text = Ui.text(activity,
+                "本模块只对《三角洲行动》生效。\n\n"
+                        + "请打开 LSPosed 管理器 → 模块 → DFM 画质工坊 → 作用域，"
+                        + "勾选「三角洲行动」（com.tencent.tmgp.dfm）。\n\n"
+                        + "没有勾选的话，即使在这里保存了设置，也不会写入游戏。",
+                14, Ui.ON_SURFACE_VARIANT, false);
+        text.setPadding(0, Ui.dp(activity, 12), 0, 0);
+        root.addView(text);
+
+        LinearLayout actions = Ui.row(activity);
+        actions.setGravity(Gravity.END);
+        actions.setPadding(0, Ui.dp(activity, 12), 0, 0);
+        final Button ok = Ui.filled(activity, "1 秒");
+        ok.setEnabled(false);
+        ok.setAlpha(0.55f);
+        ok.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(activity, 48)));
+        ok.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { dialog.dismiss(); }
+        });
+        actions.addView(ok);
+        root.addView(actions);
+
+        dialog.setContentView(root);
+        dialog.show();
+        styleWindow(dialog, activity, 0.9, 0);
+        // 按钮写着“1 秒”，实际停留 1.5 秒，给用户留出读完这段话的时间
+        ok.postDelayed(new Runnable() {
+            @Override public void run() {
+                ok.setText("知道了");
+                ok.setEnabled(true);
+                ok.setAlpha(1f);
+            }
+        }, 1500L);
     }
 
     private static void styleWindow(Dialog dialog, Activity activity, double wRatio, double hRatio) {

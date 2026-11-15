@@ -16,6 +16,8 @@ public final class Prefs {
 
     public static final String RISK_NEVER = "riskNeverShow";
     public static final String RENDER_HINT_NEVER = "renderHintNever";
+    public static final String ULTIMATE_HINT_NEVER = "ultimateHintNever";
+    public static final String SCOPE_HINT_SHOWN = "scopeHintShown";
 
     private Prefs() {}
 
@@ -32,16 +34,30 @@ public final class Prefs {
         makeReadable(c);
     }
 
-    public static boolean renderCustom(Context c) {
-        return get(c).getBoolean(RENDER_CUSTOM, false);
-    }
-
     public static boolean renderHintNever(Context c) {
         return get(c).getBoolean(RENDER_HINT_NEVER, false);
     }
 
     public static void setRenderHintNever(Context c, boolean v) {
         get(c).edit().putBoolean(RENDER_HINT_NEVER, v).commit();
+        makeReadable(c);
+    }
+
+    public static boolean scopeHintShown(Context c) {
+        return get(c).getBoolean(SCOPE_HINT_SHOWN, false);
+    }
+
+    public static void setScopeHintShown(Context c, boolean v) {
+        get(c).edit().putBoolean(SCOPE_HINT_SHOWN, v).commit();
+        makeReadable(c);
+    }
+
+    public static boolean ultimateHintNever(Context c) {
+        return get(c).getBoolean(ULTIMATE_HINT_NEVER, false);
+    }
+
+    public static void setUltimateHintNever(Context c, boolean v) {
+        get(c).edit().putBoolean(ULTIMATE_HINT_NEVER, v).commit();
         makeReadable(c);
     }
 

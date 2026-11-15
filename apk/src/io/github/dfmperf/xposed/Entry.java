@@ -1,7 +1,9 @@
 package io.github.dfmperf.xposed;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.os.Build;
 
 import java.io.File;
 
@@ -11,35 +13,59 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import io.github.dfmperf.Prefs;
-import io.github.dfmperf.core.ConfigCrypto;
-import io.github.dfmperf.core.ConfigPlan;
-import io.github.dfmperf.core.Diagnostics;
 import io.github.dfmperf.core.Material;
 import io.github.dfmperf.core.Repo;
 
 /**
- * LSPosed 入口：在游戏主进程创建 Application 之前，把目标档位写进 Engine.ini / Game.ini。
- * 运行在游戏进程内（游戏自己的 UID），因此不需要 root。
+ * LSPosed 入口。
  *
- * 只做两件事：按设置写入、或删除本工具写入的覆盖项。不保留备份、不常驻、不改游戏代码。
+ * 写入时机：ActivityThread.handleBindApplication 的 before hook，
+ * 在 Application 创建、任何初始化之前完成，效果等同于游戏启动前就把文件改好。
+ * 若该 hook 不可用，退回 Instrumentation.callApplicationOnCreate。
  */
 public final class Entry implements IXposedHookLoadPackage {
     private static final String TAG = "DFMPerf";
     private static final String PKG = "com.tencent.tmgp.dfm";
+    private static final String EXT_DIR = "/storage/emulated/0/Android/data/" + PKG + "/files";
+
     private static boolean done;
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
         if (!PKG.equals(lp.packageName)) return;
-        if (lp.processName != null && !PKG.equals(lp.processName)) return; // 只处理主进程
+        if (lp.processName != null && !PKG.equals(lp.processName)) return;
         log("已注入 " + lp.processName);
 
-        final XC_MethodHook hook = new XC_MethodHook() {
+        try {
+            XposedHelpers.findAndHookMethod("android.app.ActivityThread", lp.classLoader,
+                    "handleBindApplication", "android.app.ActivityThread$AppBindData",
+                    new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) {
+                            try {
+                                Object data = param.args[0];
+                                ApplicationInfo info = (ApplicationInfo)
+                                        XposedHelpers.getObjectField(data, "appInfo");
+                                String proc = (String) XposedHelpers.getObjectField(data, "processName");
+                                if (info == null || !PKG.equals(info.packageName)) return;
+                                if (proc != null && !PKG.equals(proc)) return;
+                                run(info, systemContext(), new File(EXT_DIR), "提前写入");
+                            } catch (Throwable t) {
+                                log("提前写入失败: " + t);
+                            }
+                        }
+                    });
+        } catch (Throwable t) {
+            log("hook handleBindApplication 失败: " + t);
+        }
+
+        final XC_MethodHook late = new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 try {
                     Application app = (Application) param.args[0];
-                    if (app != null) run(app);
+                    if (app == null || done) return;
+                    run(app.getApplicationInfo(), app, app.getExternalFilesDir(null), "兜底写入");
                 } catch (Throwable t) {
                     log("执行失败: " + t);
                     XposedBridge.log(t);
@@ -48,70 +74,59 @@ public final class Entry implements IXposedHookLoadPackage {
         };
         try {
             XposedHelpers.findAndHookMethod("android.app.Instrumentation", lp.classLoader,
-                    "callApplicationOnCreate", Application.class, hook);
-            log("hook 方式: findAndHookMethod");
-        } catch (Throwable t1) {
-            log("findAndHookMethod 失败(" + t1 + ")，改用反射 hookMethod");
+                    "callApplicationOnCreate", Application.class, late);
+        } catch (Throwable t) {
             try {
                 java.lang.reflect.Method m = android.app.Instrumentation.class
                         .getDeclaredMethod("callApplicationOnCreate", Application.class);
-                XposedBridge.hookMethod(m, hook);
-                log("hook 方式: hookMethod");
+                XposedBridge.hookMethod(m, late);
             } catch (Throwable t2) {
                 log("挂载失败: " + t2);
-                XposedBridge.log(t2);
             }
         }
     }
 
-    private static synchronized void run(Application app) {
+    private static Context systemContext() {
+        try {
+            Object at = XposedHelpers.callStaticMethod(
+                    Class.forName("android.app.ActivityThread"), "currentActivityThread");
+            return (Context) XposedHelpers.callMethod(at, "getSystemContext");
+        } catch (Throwable t) {
+            log("取系统 Context 失败: " + t);
+            return null;
+        }
+    }
+
+    private static synchronized void run(ApplicationInfo info, Context ctx, File externalDir, String stage) {
         if (done) return;
         done = true;
         try {
-            String mode = PrefsBridge.getString(app, Prefs.MODE, "off");
-            int quality = clamp(PrefsBridge.getInt(app, Prefs.QUALITY, 3), 0, 5);
-            int fps = PrefsBridge.getInt(app, Prefs.FPS, 2);
-            boolean customRender = PrefsBridge.getBoolean(app, Prefs.RENDER_CUSTOM, false);
-            int ratio = customRender ? clamp(PrefsBridge.getInt(app, Prefs.RATIO, 100), 0, 100) : 100;
-            int shortEdge = clamp(PrefsBridge.getInt(app, Prefs.SHORT_EDGE, 1080), 200, 8192);
-            log("设置来源=" + PrefsBridge.source() + " mode=" + mode + " quality=" + quality
-                    + " fps=" + fps + " 自定义渲染=" + customRender + " ratio=" + ratio
+            String mode = PrefsBridge.getString(ctx, Prefs.MODE, "off");
+            int quality = clamp(PrefsBridge.getInt(ctx, Prefs.QUALITY, 3), 0, 5);
+            int fps = PrefsBridge.getInt(ctx, Prefs.FPS, 2);
+            boolean customRender = PrefsBridge.getBoolean(ctx, Prefs.RENDER_CUSTOM, false);
+            int ratio = customRender ? clamp(PrefsBridge.getInt(ctx, Prefs.RATIO, 100), 0, 100) : 100;
+            int shortEdge = clamp(PrefsBridge.getInt(ctx, Prefs.SHORT_EDGE, 1080), 200, 8192);
+            log(stage + " 设置来源=" + PrefsBridge.source() + " mode=" + mode
+                    + " quality=" + quality + " fps=" + fps + " ratio=" + ratio
                     + " shortEdge=" + shortEdge
                     + (PrefsBridge.error().isEmpty() ? "" : " | " + PrefsBridge.error()));
 
             if (!"apply".equals(mode) && !"defaults".equals(mode)) {
-                log("模块未启用改动（mode=" + mode + "）；请回 App 选好档位后点“保存并下次启动生效”");
+                log("模块未启用改动（mode=" + mode + "）");
                 return;
             }
 
-            ApplicationInfo info = app.getApplicationInfo();
-            File dataDir = new File(info.dataDir);
-            Repo repo = Repo.forGame(dataDir, PKG, new File(info.nativeLibraryDir), app.getExternalFilesDir(null));
-            if (!repo.engine.isFile()) {
-                log("找不到 Engine.ini，跳过（请先启动一次游戏）: " + repo.engine);
+            Repo repo = Repo.forGame(new File(info.dataDir), PKG,
+                    new File(info.nativeLibraryDir), externalDir);
+            if (!repo.engine.isFile() || repo.gameplay == null || !repo.gameplay.isFile()) {
+                log("缺少配置文件，跳过: " + repo.engine);
                 return;
             }
-            if (repo.gameplay == null || !repo.gameplay.isFile()) {
-                log("找不到 UserGameplay.ini，跳过: " + repo.gameplay);
-                return;
-            }
-            log("设备: " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL
-                    + " / Android " + android.os.Build.VERSION.RELEASE);
+            log("设备: " + Build.MANUFACTURER + " " + Build.MODEL + " / Android " + Build.VERSION.RELEASE);
 
-            byte[] gameplay = Repo.readFile(repo.gameplay, 2 * 1024 * 1024);
-            Material m = Material.resolve(repo.lib, gameplay);
-            log("材料来源: " + m.source + "，编码 0x" + Integer.toHexString(m.encoding));
-
-            byte[] eng = null;
-            byte[] gam = null;
-            try {
-                eng = Repo.readFile(repo.engine, 2 * 1024 * 1024);
-                gam = Repo.readFile(repo.game, 2 * 1024 * 1024);
-                log("读取时实际值: " + Diagnostics.summary(ConfigCrypto.decodeIni(eng, m.key),
-                        new String(gam, "UTF-8")));
-            } catch (Throwable t) {
-                log("读取当前值失败: " + t);
-            }
+            Material m = Material.resolve(repo.lib, Repo.readFile(repo.gameplay, 2 * 1024 * 1024));
+            log("材料来源: " + m.source);
 
             String result = "defaults".equals(mode)
                     ? repo.removeOverrides(m)

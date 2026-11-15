@@ -37,10 +37,6 @@ public final class Material {
         this.source = source;
     }
 
-    public static Material of(byte[] material32, byte[] key32, String source) {
-        return new Material(material32.clone(), 0, key32.clone(), source);
-    }
-
     public static Material resolve(File libUE4, byte[] gameplayIni) throws Exception {
         if (!libUE4.isFile()) throw new IOException("找不到 libUE4.so: " + libUE4);
         String sha = sha256(libUE4);

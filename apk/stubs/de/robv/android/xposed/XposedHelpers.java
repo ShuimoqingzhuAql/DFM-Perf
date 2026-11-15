@@ -29,4 +29,8 @@ public final class XposedHelpers {
     public static Object callMethod(Object obj, String methodName, Object... args) {
         throw new UnsupportedOperationException();
     }
+
+    public static Object callStaticMethod(Class<?> clazz, String methodName, Object... args) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -76,7 +76,7 @@ if (-not (Test-Path $ks)) {
         -storepass dfmperf -keypass dfmperf -dname "CN=DFM Perf, OU=Reverse, O=Open, L=NA, S=NA, C=CN"
     if ($LASTEXITCODE -ne 0) { throw 'keystore 生成失败' }
 }
-$final = Join-Path $OUT 'DFM-Perf-v1.0.apk'
+$final = Join-Path $OUT 'DFM-Perf-v2.8.apk'
 & (Join-Path $BT 'apksigner.bat') sign --ks $ks --ks-pass pass:dfmperf --key-pass pass:dfmperf --out $final $aligned
 if ($LASTEXITCODE -ne 0) { throw 'apksigner 失败' }
 & (Join-Path $BT 'apksigner.bat') verify --print-certs $final

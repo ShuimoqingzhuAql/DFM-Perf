@@ -33,3 +33,6 @@ Thumbs.db
 work/gamedex/
 work/out/*/resources/
 work/out/indep_jadx/
+# 逆向中间产物（不入库）
+work/
+
